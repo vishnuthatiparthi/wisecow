@@ -1,0 +1,60 @@
+pipeline {
+    agent any 
+
+    stages {
+        stage('Cleaning Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+        stage('Checkout from Git') {
+            steps {
+                git 'https://github.com/vishnuthatiparthi/kubesproject.git'
+            }
+        }
+        stage("Docker Image Build") {
+            steps {
+                script {
+                    dir('dockerfile') {
+                        sh 'docker system prune -f'
+                        sh 'docker container prune -f'
+                        sh 'docker build -t frontend .'
+                    }
+                }
+            }
+        }
+        stage("ECR Image Pushing") {
+            steps {
+                script {
+                    sh '''
+                    aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 564398348890.dkr.ecr.us-east-1.amazonaws.com
+                    docker tag frontend:latest 564398348890.dkr.ecr.us-east-1.amazonaws.com/frontend:${BUILD_NUMBER}
+                    docker push 564398348890.dkr.ecr.us-east-1.amazonaws.com/frontend:${BUILD_NUMBER}
+                    '''
+                }
+            }
+        }
+        stage('Update Deployment file') {
+            environment {
+                GIT_REPO_NAME = "wisecow"
+                GIT_USER_NAME = "vishnuthatiparthi"
+            }
+            steps {
+                dir('kubernetes-files') {
+                    withCredentials([string(credentialsId: 'my-git-pattoken', variable: 'git_token')]) {
+                        sh '''
+                            git config user.email "vishnureddys12345@gmail.com"
+                            git config user.name "vishnuthatiparthi"
+                            BUILD_NUMBER=${BUILD_NUMBER}
+                            echo $BUILD_NUMBER
+                            sed -i "s#image:.*#image: 564398348890.dkr.ecr.us-east-1.amazonaws.com/frontend:$BUILD_NUMBER#g" wisecowdeploy.yaml
+                            git add .
+                            git commit -m "Update deployment Image to version \${BUILD_NUMBER}"
+                            git push https://${git_token}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:master
+                        '''
+                    }
+                }
+            }
+        }
+    }
+} 

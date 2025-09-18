@@ -7,7 +7,7 @@ pipeline {
         ECR_REPOSITORY = 'frontend'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         AWS_CREDENTIALS = '3cf0c1c2-5ab4-43f0-b874-bfb6f2ef8968'  // Your Jenkins AWS credentials ID
-        KUBECONFIG_CREDENTIALS = 'kubeconfig-id'                   // Jenkins credential ID for Kubeconfig file (optional)
+        KUBECONFIG_CREDENTIALS = 'kubeconfig-id'                  // Jenkins kubeconfig credential ID
     }
 
     stages {
@@ -20,7 +20,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    def dockerImage = docker.build("${ECR_REPOSITORY}:${IMAGE_TAG}")
+                    // Build docker image from 'k8s' directory with Dockerfile in that dir
+                    def dockerImage = docker.build("${ECR_REPOSITORY}:${IMAGE_TAG}", "-f k8s/dockerfile k8s")
                 }
             }
         }

@@ -2,11 +2,11 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = 'us-east-1'                    // set your AWS region
-        ECR_REGISTRY = '564398348890.dkr.ecr.us-east-1.amazonaws.com'  // your ECR registry URL
-        ECR_REPOSITORY = 'frontend'                 // your ECR repository name
-        IMAGE_TAG = "${env.BUILD_NUMBER}"           // tag images with Jenkins build number
-        AWS_CREDENTIALS = 'aws-credentials-id'      // Jenkins AWS credentials ID
+        AWS_REGION = 'us-east-1'                   
+        ECR_REGISTRY = '564398348890.dkr.ecr.us-east-1.amazonaws.com'  
+        ECR_REPOSITORY = 'frontend'              
+        IMAGE_TAG = "${env.BUILD_NUMBER}"           
+        AWS_CREDENTIALS = '3cf0c1c2-5ab4-43f0-b874-bfb6f2ef8968' // Jenkins AWS credentials ID
     }
 
     stages {
@@ -19,7 +19,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    dockerImage = docker.build("${ECR_REPOSITORY}:${IMAGE_TAG}")
+                    def dockerImage = docker.build("${ECR_REPOSITORY}:${IMAGE_TAG}")
                 }
             }
         }

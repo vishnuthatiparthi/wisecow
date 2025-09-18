@@ -2,11 +2,12 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = 'us-east-1'                   
-        ECR_REGISTRY = '564398348890.dkr.ecr.us-east-1.amazonaws.com'  
-        ECR_REPOSITORY = 'frontend'              
-        IMAGE_TAG = "${env.BUILD_NUMBER}"           
-        AWS_CREDENTIALS = '3cf0c1c2-5ab4-43f0-b874-bfb6f2ef8968' // Jenkins AWS credentials ID
+        AWS_REGION = 'us-east-1'
+        ECR_REGISTRY = '564398348890.dkr.ecr.us-east-1.amazonaws.com'
+        ECR_REPOSITORY = 'frontend'
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        AWS_CREDENTIALS = '3cf0c1c2-5ab4-43f0-b874-bfb6f2ef8968'  // Your Jenkins AWS credentials ID
+        KUBECONFIG_CREDENTIALS = 'kubeconfig-id'                   // Jenkins credential ID for Kubeconfig file (optional)
     }
 
     stages {
@@ -36,9 +37,18 @@ pipeline {
 
         stage('Push Docker Image to ECR') {
             steps {
-                script {
-                    sh "docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
-                    sh "docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+                sh "docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+                sh "docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIALS}", variable: 'KUBECONFIG')]) {
+                    sh """
+                    kubectl set image deployment/frontend-deployment wisecow=${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} --record
+                    kubectl rollout status deployment/frontend-deployment
+                    """
                 }
             }
         }
@@ -46,10 +56,10 @@ pipeline {
 
     post {
         failure {
-            echo 'Build or push failed!'
+            echo 'Build, push, or deploy failed!'
         }
         success {
-            echo "Docker image pushed successfully: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+            echo "Successfully deployed image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
         }
     }
 }

@@ -1,7 +1,7 @@
-# Use Debian stable-slim as base image
+# Base image
 FROM debian:stable-slim
 
-# Install required packages
+# Install required packages, strfile included in fortune-mod
 RUN apt-get update && apt-get install -y --no-install-recommends \
     cowsay \
     fortune-mod \
@@ -9,10 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     && rm -rf /var/lib/apt/lists/*
 
-# Create the fortune directory to avoid copy errors
+# Create directory for fortunes
 RUN mkdir -p /usr/share/games/fortunes
 
-# Add /usr/games to PATH so cowsay and fortune commands can be found
+# Add /usr/games to PATH (where cowsay and fortune reside)
 ENV PATH="/usr/games:${PATH}"
 
 # Set working directory
@@ -21,15 +21,17 @@ WORKDIR /app
 # Copy wisecow.sh script
 COPY wisecow.sh /app/wisecow.sh
 
-# Copy your custom fortune files folder into container
+# Copy fortunes folder with your custom file ('custom')
 COPY fortunes /usr/share/games/fortunes
+
+# Compile the custom fortune file to enable fortune to read it properly
+RUN strfile /usr/share/games/fortunes/custom
 
 # Make wisecow.sh executable
 RUN chmod +x /app/wisecow.sh
 
-# Expose the port used by wisecow.sh
+# Expose server port
 EXPOSE 4499
 
-# Run wisecow.sh script on container start
+# Entry point command to run wisecow.sh
 CMD ["./wisecow.sh"]
-

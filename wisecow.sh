@@ -1,46 +1,21 @@
 #!/usr/bin/env bash
-
 SRVPORT=4499
-RSPFILE=response
 
-rm -f $RSPFILE
-mkfifo $RSPFILE
-
-get_api() {
-	read line
-	echo $line
+serve() {
+    while true; do
+        { 
+            # Read and discard HTTP request headers until blank line
+            while IFS= read -r line && [ "$line" != $'\r' ] && [ -n "$line" ]; do :; done
+            # Generate fortune + cowsay output and wrap in HTTP response with styled <pre>
+            fortune /usr/share/games/fortunes/custom | cowsay | \
+            awk 'BEGIN { print "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r"
+                         print "<pre style=\"font-family: monospace;\">"
+                       }
+                 { print $0 }
+                 END { print "</pre>" }'
+        } | nc -q 1 -l -p "$SRVPORT"
+    done
 }
 
-handleRequest() {
-    # 1) Process the request
-	get_api
-	mod=`fortune`
-
-cat <<EOF > $RSPFILE
-HTTP/1.1 200
-
-
-<pre>`cowsay $mod`</pre>
-EOF
-}
-
-prerequisites() {
-	command -v cowsay >/dev/null 2>&1 &&
-	command -v fortune >/dev/null 2>&1 || 
-		{ 
-			echo "Install prerequisites."
-			exit 1
-		}
-}
-
-main() {
-	prerequisites
-	echo "Wisdom served on port=$SRVPORT..."
-
-	while [ 1 ]; do
-		cat $RSPFILE | nc -lN $SRVPORT | handleRequest
-		sleep 0.01
-	done
-}
-
-main
+echo "Wisdom served on port=$SRVPORT..."
+serve
